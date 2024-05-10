@@ -1,0 +1,88 @@
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/kthread.h>
+#include <linux/sched.h>
+#include <linux/delay.h>
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Ahmed");
+MODULE_DESCRIPTION("A simple device driver - Spinlock");
+
+DEFINE_SPINLOCK(etx_spinlock);
+//spinlock_t etx_spinlock;
+unsigned long etx_global_variable = 0;
+static int __init etx_driver_init(void);
+static void __exit etx_driver_exit(void);
+static struct task_struct *etx_thread1;
+static struct task_struct *etx_thread2;
+
+
+int thread_function1(void *pv);
+int thread_function2(void *pv);
+
+
+int thread_function1(void *pv)
+{
+
+ while(!kthread_should_stop()) {
+ if(!spin_is_locked(&etx_spinlock)) {
+ pr_info("Spinlock is not locked in Thread Function1\n");
+ }
+ spin_lock(&etx_spinlock);
+ if(spin_is_locked(&etx_spinlock)) {
+ pr_info("Spinlock is locked in Thread Function1\n");
+ }
+ etx_global_variable++;
+ pr_info("In EmbeTronicX Thread Function1 %lu\n", etx_global_variable);
+ spin_unlock(&etx_spinlock);
+ msleep(1000);
+ }
+ return 0;
+}
+
+
+int thread_function2(void *pv)
+{
+ while(!kthread_should_stop()) {
+ spin_lock(&etx_spinlock);
+ etx_global_variable++;
+ pr_info("In EmbeTronicX Thread Function2 %lu\n", etx_global_variable);
+ spin_unlock(&etx_spinlock);
+ msleep(1000);
+ }
+ return 0;
+}
+
+static int __init etx_driver_init(void)
+{
+
+ etx_thread1 = kthread_run(thread_function1,NULL,"eTx Thread1");
+ if(etx_thread1) {
+ pr_err("Kthread1 Created Successfully...\n");
+ } else {
+ pr_err("Cannot create kthread1\n");
+ }
+
+ etx_thread2 = kthread_run(thread_function2,NULL,"eTx Thread2");
+ if(etx_thread2) {
+ pr_err("Kthread2 Created Successfully...\n");
+
+ } else {
+ pr_err("Cannot create kthread2\n");
+ }
+ //spin_lock_init(&etx_spinlock);
+
+ pr_info("Device Driver Insert...Done!!!\n");
+ return 0;
+}
+
+static void __exit etx_driver_exit(void)
+{
+ kthread_stop(etx_thread1);
+ kthread_stop(etx_thread2);
+ pr_info("Device Driver Remove...Done!!\n");
+}
+
+module_init(etx_driver_init);
+module_exit(etx_driver_exit); 
