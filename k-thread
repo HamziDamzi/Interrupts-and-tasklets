@@ -1,0 +1,43 @@
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/kthread.h>
+#include <linux/sched.h>
+#include <linux/delay.h> 
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Ahmed");
+MODULE_DESCRIPTION("A simple device driver - Kernel Thread");
+static int __init etx_driver_init(void);
+static void __exit etx_driver_exit(void);
+static struct task_struct *etx_thread;
+int thread_function(void *pv);
+int thread_function(void *pv)
+{
+ int i=0;
+ while(!kthread_should_stop()) {
+ pr_info("Counter = %d\n", i++);
+ msleep(1000);
+ }
+ return 0;
+}
+static int __init etx_driver_init(void)
+{
+ etx_thread = kthread_create(thread_function,NULL,"eTx Thread");
+ if(etx_thread) {
+ wake_up_process(etx_thread);
+ } else {
+ pr_err("Cannot create kthread\n");
+ }
+ pr_info("Device Driver Insert...Done!!!\n");
+ return 0;
+}
+
+static void __exit etx_driver_exit(void)
+{
+ kthread_stop(etx_thread);
+3
+ pr_info("Device Driver Remove...Done!!\n");
+}
+
+module_init(etx_driver_init);
+module_exit(etx_driver_exit); 
